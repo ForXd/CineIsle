@@ -1,0 +1,58 @@
+{
+  "name": "libretv",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ForXd 独立维护的影视发现与播放项目，代码基础来源于 LibreTV",
+  "license": "AGPL-3.0-or-later",
+  "scripts": {
+    "dev": "next dev -p 8080",
+    "build": "next build",
+    "start": "next start -p 8080",
+    "lint": "biome lint --error-on-warnings src",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run",
+    "check": "pnpm lint && pnpm typecheck && pnpm test",
+    "astryx": "node node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs",
+    "lint:fix": "biome lint --write src",
+    "format": "biome format --write src",
+    "format:check": "biome format src"
+  },
+  "dependencies": {
+    "@astryxdesign/core": "0.7.13",
+    "@astryxdesign/theme-neutral": "0.7.13",
+    "@stylexjs/stylex": "^0.19.1",
+    "@tanstack/react-query": "^5.107.1",
+    "@tanstack/react-virtual": "^3.14.26",
+    "artplayer": "^5.4.0",
+    "dexie": "^4.4.7",
+    "dexie-react-hooks": "^4.4.0",
+    "hls.js": "^1.7.4",
+    "mpegts.js": "^1.8.2",
+    "mux.js": "^6.3.0",
+    "next": "16.4.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zustand": "^5.1.0"
+  },
+  "devDependencies": {
+    "@astryxdesign/cli": "0.7.13",
+    "@biomejs/biome": "2.6.6",
+    "@tailwindcss/postcss": "4.3.5",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "postcss": "^8.5.32",
+    "tailwindcss": "^4.3.5",
+    "typescript": "7.0.2",
+    "vitest": "^5.1.0"
+  },
+  "packageManager": "pnpm@12.18.0",
+  "engines": {
+    "node": ">=24 <25",
+    "pnpm": ">=12 <13"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ForXd/LibreTV.git"
+  }
+}

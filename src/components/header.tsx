@@ -1,0 +1,196 @@
+'use client';
+
+import Link from 'next/link';
+import Image from 'next/image';
+import { Button } from '@astryxdesign/core/Button';
+import { TextInput } from '@astryxdesign/core/TextInput';
+import { useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { ThemeToggle } from './theme';
+import { SourceManagerDrawer } from './source-manager';
+import { HistoryPanel } from './history-panel';
+import { requestShowDownloadManager } from './download-manager';
+import { Icon } from './icon';
+import { SearchHistoryDropdown, useSearchHistory } from './search-history';
+import { cn } from '@/lib/utils';
+
+/** 顶部导航：Logo、搜索框（首页外）、历史、设置 */
+export function Header({ showSearch = false }: { showSearch?: boolean }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  // 与首页搜索框共用同一套「最近搜索」下拉逻辑
+  const searchHistory = useSearchHistory(query);
+
+  const submitSearch = (text: string) => {
+    const q = text.trim().slice(0, 100);
+    if (!q) return;
+    searchHistory.close();
+    router.push(`/?s=${encodeURIComponent(q)}`, { scroll: false });
+    // 顶栏搜索一并写入最近搜索（此前只有首页会记录）
+    searchHistory.record(q);
+  };
+
+  const pickHistory = (text: string) => {
+    setQuery(text);
+    submitSearch(text);
+  };
+
+  return (
+    <>
+      <header className="sticky top-0 z-40 bg-surface/90 backdrop-blur border-b border-line">
+        <div className="site-header-inner">
+          <Link href="/" aria-label="LibreTV 首页" className="site-wordmark">
+            <Image
+              width={28}
+              height={28}
+              src="/icons/icon-512.png"
+              alt="LibreTV"
+              className="w-7 h-7 rounded-lg"
+            />
+            <span>
+              Libre<span className="wordmark-tv">TV</span>
+              <small>让好故事发生</small>
+            </span>
+          </Link>
+
+          <nav className="primary-navigation" aria-label="主导航">
+            <HeaderLink href="/" active={pathname === '/'}>
+              发现
+            </HeaderLink>
+            <HeaderLink href="/live" active={pathname === '/live'}>
+              直播
+            </HeaderLink>
+            <HeaderLink href="/about" active={pathname === '/about'}>
+              关于
+            </HeaderLink>
+          </nav>
+          {showSearch && (
+            <form
+              className="header-search"
+              onSubmit={(e) => {
+                e.preventDefault();
+                submitSearch(query);
+              }}
+            >
+              <div ref={searchHistory.containerRef} className="relative">
+                <TextInput
+                  label="搜索影片"
+                  isLabelHidden
+                  size="lg"
+                  controlClassName={cn(
+                    'cinema-search-control',
+                    // 展开时：上圆角与外框沿用聚焦样式，底边改为内部分隔线，与下拉拼成同一面板
+                    searchHistory.visible &&
+                      'rounded-b-none border-accent border-b-line bg-surface-raised focus-visible:ring-0'
+                  )}
+                  aria-label="搜索影片"
+                  placeholder="搜索影片..."
+                  value={query}
+                  onChange={(value) => {
+                    setQuery(value.slice(0, 100));
+                    searchHistory.resetActive();
+                  }}
+                  onFocus={searchHistory.onFocus}
+                  onKeyDown={(e) => searchHistory.onKeyDown(e, pickHistory)}
+                  role="combobox"
+                  aria-expanded={searchHistory.visible}
+                  aria-controls="header-search-history"
+                  aria-autocomplete="list"
+                  aria-activedescendant={
+                    searchHistory.visible && searchHistory.activeIndex >= 0
+                      ? `header-search-history-${searchHistory.activeIndex}`
+                      : undefined
+                  }
+                />
+                <Button
+                  type="submit"
+                  className="header-search-submit"
+                  label="提交搜索"
+                  variant="ghost"
+                  isIconOnly
+                  icon={<Icon name="search" className="w-4 h-4" />}
+                />
+                {searchHistory.visible && (
+                  <SearchHistoryDropdown
+                    id="header-search-history"
+                    matches={searchHistory.matches}
+                    activeIndex={searchHistory.activeIndex}
+                    onPick={pickHistory}
+                    onRemove={searchHistory.remove}
+                    onClearAll={searchHistory.clearAll}
+                  />
+                )}
+              </div>
+            </form>
+          )}
+
+          <div className="flex-1 sm:hidden" />
+
+          <nav className="header-tools flex items-center gap-1 ml-auto" aria-label="个人工具">
+            <ThemeToggle />
+            <IconButton label="观看历史" onClick={() => setHistoryOpen(true)}>
+              <Icon name="clock" />
+            </IconButton>
+            <IconButton label="下载管理" onClick={requestShowDownloadManager}>
+              <Icon name="download" />
+            </IconButton>
+            <IconButton label="设置" onClick={() => setSettingsOpen(true)}>
+              <Icon name="gear" />
+            </IconButton>
+          </nav>
+        </div>
+      </header>
+
+      <SourceManagerDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <HistoryPanel open={historyOpen} onClose={() => setHistoryOpen(false)} />
+    </>
+  );
+}
+
+function HeaderLink({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'px-2.5 py-1.5 rounded-md text-sm transition-colors',
+        active ? 'text-content bg-hover' : 'text-muted hover:text-content'
+      )}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function IconButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Button
+      variant="ghost"
+      size="lg"
+      label={label}
+      tooltip={label}
+      isIconOnly
+      icon={children}
+      onClick={onClick}
+    />
+  );
+}

@@ -1,0 +1,879 @@
+@layer reset, theme, base, astryx-base, astryx-theme, components, utilities;
+@import "tailwindcss" source('../');
+@import "@astryxdesign/core/reset.css";
+@import "@astryxdesign/core/astryx.css";
+@import "@astryxdesign/theme-neutral/theme.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --color-page: rgb(var(--c-page));
+  --color-surface: rgb(var(--c-surface));
+  --color-surface-raised: rgb(var(--c-surface-raised));
+  --color-card: rgb(var(--c-card));
+  --color-chip: rgb(var(--c-chip));
+  --color-hover: rgb(var(--c-hover));
+  --color-line: rgb(var(--c-line));
+  --color-content: rgb(var(--c-content));
+  --color-muted: rgb(var(--c-muted));
+  --color-faint: rgb(var(--c-faint));
+  --color-accent: rgb(var(--c-accent));
+  --color-accent-hover: rgb(var(--c-accent-hover));
+  --color-danger: rgb(var(--c-danger));
+  --color-danger-hover: rgb(var(--c-danger-hover));
+  --color-success: rgb(var(--c-success));
+  --color-warning: rgb(var(--c-warning));
+  --color-info: rgb(var(--c-info));
+  --color-rating: rgb(var(--c-rating));
+  --color-on-accent: rgb(var(--c-on-accent));
+  --color-danger-solid: rgb(var(--c-danger-solid));
+  --color-success-solid: rgb(var(--c-success-solid));
+  --color-warning-solid: rgb(var(--c-warning-solid));
+  --color-info-solid: rgb(var(--c-info-solid));
+  --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-slide-up: slide-up 0.25s ease-out;
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/*
+ * 语义化配色（RGB 三元组，供 Tailwind 以 <alpha-value> 注入透明度）：
+ * 深色主题沿用旧版 LibreTV 配色；浅色主题为对应的白底变体。
+ */
+:root {
+  --c-page: 246 247 249; /* #f6f7f9 */
+  --c-surface: 255 255 255; /* #ffffff */
+  --c-surface-raised: 255 255 255;
+  --c-card: 255 255 255;
+  --c-chip: 238 240 243; /* #eef0f3 */
+  --c-hover: 233 236 240; /* #e9ecf0 */
+  --c-line: 224 227 232; /* #e0e3e8 */
+  --c-content: 26 26 26; /* #1a1a1a */
+  --c-muted: 95 99 104; /* #5f6368 */
+  --c-faint: 107 114 128; /* #6b7280（原 #8a8f98 对白底仅 3.2:1，加深后达到 AA 4.5:1） */
+  --c-accent: 37 99 235; /* blue-600 */
+  --c-accent-hover: 29 78 216; /* blue-700 */
+  --c-on-accent: 255 255 255; /* accent 实心底上的文字色 */
+  /* 语义状态色（亮色主题取偏深值，保证浅底上的对比度） */
+  --c-danger: 220 38 38; /* red-600 */
+  --c-danger-hover: 185 28 28; /* red-700 */
+  --c-success: 22 163 74; /* green-600 */
+  --c-warning: 217 119 6; /* amber-600 */
+  --c-info: 37 99 235; /* blue-600 */
+  --c-rating: 245 158 11; /* amber-500 */
+  /* 实心状态底色（配白字）：比「文字用」色更深一档，保证白字对比度 ≥ 4.5:1 */
+  --c-danger-solid: 185 28 28; /* red-700 */
+  --c-success-solid: 21 128 61; /* green-700 */
+  --c-warning-solid: 180 83 9; /* amber-700 */
+  --c-info-solid: 29 78 216; /* blue-700 */
+  color-scheme: light;
+}
+
+.dark {
+  /* 旧版 LibreTV（backup-2025）赛博影视主题（整体调深一档）：深蓝黑底 + 霓虹蓝/粉点缀 */
+  --c-page: 11 16 26; /* #0b101a 深蓝黑页面底色 */
+  --c-surface: 20 28 41; /* #141c29 弹窗/抽屉底色 */
+  --c-surface-raised: 20 28 41;
+  --c-card: 13 20 31; /* #0d141f 卡片底色 */
+  --c-chip: 22 32 46; /* #16202e 卡片/输入框底色 */
+  --c-hover: 29 42 61; /* #1d2a3d 悬停态（chip 提亮） */
+  --c-line: 34 48 69; /* #223045 边框（近似旧版 rgba(0,204,255,.15) 观感） */
+  --c-content: 230 242 255; /* #e6f2ff 蓝白主文本（--text-color） */
+  --c-muted: 133 153 178; /* #8599b2 次级文本（--text-muted） */
+  --c-faint: 122 140 166; /* #7a8ca6 三级文本（原 #6b7f99 在抽屉底色 #141c29 上仅 4.17:1，12px 小字不达标；提亮后 4.99:1） */
+  --c-accent: 0 184 230; /* #00b8e6 霓虹蓝主色（--primary-color 调深一档） */
+  --c-accent-hover: 51 214 255; /* #33d6ff 霓虹蓝浅变体（--primary-light） */
+  /* 霓虹蓝底亮度过高（对白字仅 2.35:1），暗色下实心底改用深色文字 */
+  --c-on-accent: 8 19 31;
+  /* 语义状态色（暗色主题取中等明度值，保证深蓝黑底上的对比度） */
+  --c-danger: 239 68 68; /* red-500 */
+  --c-danger-hover: 248 113 113; /* red-400 */
+  --c-success: 34 197 94; /* green-500 */
+  --c-warning: 245 158 11; /* amber-500 */
+  --c-info: 59 130 246; /* blue-500 */
+  --c-rating: 251 191 36; /* amber-400 */
+  /* 实心状态底色（配白字）：与亮色一致取深档，避免琥珀/绿色底白字对比度不足 */
+  --c-danger-solid: 185 28 28; /* red-700 */
+  --c-success-solid: 21 128 61; /* green-700 */
+  --c-warning-solid: 180 83 9; /* amber-700 */
+  --c-info-solid: 29 78 216; /* blue-700 */
+  color-scheme: dark;
+}
+
+html,
+body {
+  @apply bg-page text-content antialiased;
+}
+
+/* 暗色主题：模拟旧版 .page-bg 的深蓝黑纵向渐变 */
+
+body {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", sans-serif;
+}
+
+@layer components {
+  /* 小尺寸按钮：定义在 .btn-* 之后，确保尺寸覆盖生效（与 .btn-primary / .btn-ghost 组合使用） */
+
+  /* 胶囊控件（筛选、分类标签）：统一内边距与圆角 */
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-line rounded-full;
+  }
+}
+
+/* 行数截断 */
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 播放器集数激活态 */
+.episode-active {
+  background: rgb(var(--c-accent));
+  border-color: rgb(var(--c-accent));
+  /* 暗色下霓虹蓝底对白字对比度不足，统一用 on-accent（亮色白 / 暗色深） */
+  color: rgb(var(--c-on-accent));
+}
+
+/* 品牌渐变字（沿用旧版 LibreTV 的霓虹蓝→霓虹粉） */
+.brand-gradient {
+  background: linear-gradient(to right, #00ccff, #ff3c78);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* LIVE 呼吸红点（直播页标识） */
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #ef4444;
+  animation: live-breathe 2s ease-in-out infinite;
+}
+@keyframes live-breathe {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
+  }
+  50% {
+    opacity: 0.55;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0);
+  }
+}
+
+/*
+ * 播放器控制条在窄屏没有多余横向空间：
+ * 上/下集控件会把右侧的「网页全屏」「全屏」挤出可视区（手机上表现为图标显示不全）。
+ * 只在窄于 640px 时收起这两个控件——手机横屏、平板仍有空间，可以保留。
+ * 切集在任何情况下都还能用播放器下方的按钮。
+ */
+@media (max-width: 640px) {
+  /* 竖屏空间只够放「播放 + 时间 + 设置 + 网页全屏 + 全屏」：
+     音量交给系统按键，截图与画中画在手机上很少用，一并收起，
+     保证最右侧的全屏按钮完整可见 */
+  .art-control-prev-episode,
+  .art-control-next-episode,
+  .art-control-volume,
+  .art-control-screenshot,
+  .art-control-pip {
+    /* biome-ignore lint/complexity/noImportantStyles: Override ArtPlayer runtime-injected control sizing and visibility on narrow screens. */
+    display: none !important;
+  }
+
+  /* 00:04 / 01:26:30 这种长文本占宽最多，缩字号再收紧内边距 */
+  .art-control-time {
+    font-size: 11px;
+    padding: 0 2px;
+  }
+
+  /* 默认每个图标 46px，竖屏下收到 40px —— 省出的宽度正好让最后一个全屏按钮不贴边 */
+  .art-control-playAndPause,
+  .art-control-setting,
+  .art-control-fullscreenWeb,
+  .art-control-fullscreen {
+    /* biome-ignore lint/complexity/noImportantStyles: Override ArtPlayer runtime-injected control sizing and visibility on narrow screens. */
+    width: 40px !important;
+    /* biome-ignore lint/complexity/noImportantStyles: Override ArtPlayer runtime-injected control sizing and visibility on narrow screens. */
+    min-width: 40px !important;
+  }
+}
+
+/* Discovery: quiet surfaces and generous, image-led film shelves. */
+:root:not(.dark) {
+  --c-page: 246 248 247;
+  --c-chip: 235 239 237;
+  --c-hover: 225 232 228;
+  --c-line: 218 225 221;
+  --c-content: 25 35 31;
+  --c-muted: 89 104 97;
+  --c-accent: 38 91 72;
+  --c-accent-hover: 28 72 56;
+}
+body {
+  background: linear-gradient(115deg, #f4f2f7 0%, #f5f8f6 52%, #edf8f3 100%) fixed;
+}
+.dark body {
+  background: linear-gradient(180deg, rgb(11 16 26), rgb(20 28 41)) fixed;
+}
+.site-header-inner {
+  max-width: 1328px;
+  min-height: 82px;
+  margin: auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 36px;
+}
+.site-wordmark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  font-weight: 750;
+  font-size: 21px;
+  letter-spacing: -0.7px;
+  line-height: 1.1;
+}
+.site-wordmark small {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 3px;
+  font-weight: 500;
+  margin-top: 6px;
+  color: rgb(var(--c-muted));
+}
+.wordmark-tv {
+  font-weight: 400;
+}
+.primary-navigation {
+  display: flex;
+  align-self: stretch;
+  align-items: stretch;
+  gap: 16px;
+}
+.primary-navigation a {
+  display: flex;
+  align-items: center;
+  border-radius: 0;
+  padding: 0 15px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+}
+.primary-navigation a[aria-current="page"] {
+  border-color: rgb(var(--c-content));
+}
+.header-search {
+  width: 270px;
+  margin-left: auto;
+}
+.header-search-submit {
+  position: absolute;
+  right: 7px;
+  top: 4px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+.header-search-submit:hover {
+  background: rgb(var(--c-hover));
+}
+.header-tools {
+  flex-shrink: 0;
+}
+.discovery-main {
+  max-width: 1328px;
+  padding: 32px 24px 72px;
+}
+.discovery-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 2.5fr) minmax(270px, 1fr);
+  gap: 30px;
+  margin-bottom: 30px;
+}
+.feature-film {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  min-height: 400px;
+  border-radius: 32px;
+  color: #fff;
+  background: #263b34;
+  box-shadow: 0 20px 40px -30px #183e3b80;
+}
+.feature-art {
+  position: absolute;
+  width: 67%;
+  height: 100%;
+  right: 0;
+  top: 0;
+  object-fit: cover;
+  object-position: center 30%;
+  animation: film-reveal 0.4s ease-out;
+}
+.feature-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, #172a24 0%, #172a24ed 24%, #172a2470 58%, #172a2400 100%),
+    linear-gradient(0deg, #10241f99, transparent 65%);
+}
+.feature-topline {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 30px 32px;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #e3ebe5;
+}
+.feature-topline span:first-child {
+  font-weight: 650;
+}
+.feature-copy {
+  position: relative;
+  padding: 58px 36px 64px;
+  max-width: 80%;
+  animation: film-reveal 0.35s ease-out;
+}
+.feature-eyebrow {
+  font-size: 12px;
+  letter-spacing: 3px;
+  margin-bottom: 13px;
+  color: #e2e9e3;
+}
+.feature-copy h1 {
+  color: #fff;
+  font-size: clamp(30px, 3.2vw, 48px);
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -1px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.feature-meta {
+  font-size: 12px;
+  line-height: 1.8;
+  margin-top: 16px;
+  color: #e2e9e3;
+}
+.feature-action {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 24px;
+  padding: 12px 20px;
+  border-radius: 30px;
+  background: #fff;
+  color: #203c2e;
+  font-size: 13px;
+  font-weight: 600;
+  transition:
+    transform 0.2s,
+    background 0.2s;
+}
+.feature-action:hover {
+  background: #e5eee8;
+  transform: translateY(-2px);
+}
+.feature-action:active {
+  transform: scale(0.97);
+}
+.feature-action .feature-arrow {
+  margin-left: 16px;
+  font-size: 18px;
+}
+.feature-pagination {
+  position: absolute;
+  bottom: 22px;
+  right: 28px;
+  display: flex;
+  gap: 3px;
+}
+.feature-pagination button {
+  width: 26px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+}
+.feature-pagination button::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 10px;
+  background: #ffffff60;
+  transition:
+    width 0.2s,
+    background 0.2s;
+}
+.feature-pagination button[aria-pressed="true"]::after {
+  width: 22px;
+  background: white;
+}
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.section-heading h2 {
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.5px;
+}
+.watch-sidebar {
+  min-width: 0;
+  padding-top: 6px;
+}
+.watch-sidebar .section-heading {
+  margin-bottom: 22px;
+}
+.watch-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  text-align: left;
+  margin-bottom: 20px;
+  border-radius: 14px;
+  transition: transform 0.2s;
+}
+.watch-row:hover {
+  transform: translateX(4px);
+}
+.watch-cover {
+  position: relative;
+  width: 120px;
+  height: 88px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: rgb(var(--c-chip));
+  flex-shrink: 0;
+}
+.watch-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 25%;
+}
+.mini-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 25px;
+  color: white;
+  background: #0003;
+  text-shadow: 0 2px 10px #000;
+}
+.watch-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  background: #b8efb7;
+}
+.watch-copy {
+  min-width: 0;
+}
+.watch-copy h3 {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.watch-tag {
+  display: inline-block;
+  border-radius: 8px;
+  padding: 2px 7px;
+  font-size: 10px;
+  background: rgb(var(--c-chip));
+  margin: 6px 0;
+}
+.watch-copy p {
+  font-size: 11px;
+  color: rgb(var(--c-muted));
+}
+.watch-empty {
+  min-height: 285px;
+  border: 1px dashed rgb(var(--c-line));
+  border-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  text-align: center;
+  color: rgb(var(--c-muted));
+}
+.watch-empty h3 {
+  margin: 18px 0 10px;
+  color: rgb(var(--c-content));
+  font-weight: 600;
+}
+.watch-empty p {
+  font-size: 13px;
+  line-height: 1.8;
+}
+.discovery-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 0 26px;
+  border-bottom: 1px solid rgb(var(--c-line));
+}
+.discovery-chip {
+  border-radius: 50px;
+  padding: 10px 19px;
+  font-size: 13px;
+  font-weight: 550;
+  transition:
+    background 0.2s,
+    transform 0.2s;
+}
+.discovery-chip:active {
+  transform: scale(0.96);
+}
+.collection-heading {
+  margin: 28px 0 23px;
+}
+.collection-count {
+  font-size: 12px;
+  color: rgb(var(--c-muted));
+}
+.poster-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  column-gap: 23px;
+  row-gap: 32px;
+}
+.poster-card {
+  border-radius: 16px;
+  min-width: 0;
+  transition: transform 0.22s;
+}
+.poster-card:hover {
+  transform: translateY(-5px);
+}
+.poster-image {
+  overflow: hidden;
+  border-radius: 18px;
+  box-shadow: 0 8px 18px -14px #1235;
+}
+.poster-image img {
+  transition: transform 0.35s;
+}
+.poster-card:hover img {
+  transform: scale(1.035);
+}
+.poster-caption {
+  padding: 10px 0 0;
+}
+.poster-rating {
+  font-size: 12px;
+  color: rgb(var(--c-muted));
+  margin-bottom: 6px;
+}
+.poster-title {
+  font-size: 14px;
+  line-height: 1.6;
+  font-weight: 550;
+}
+.recommend-empty {
+  padding: 50px 20px;
+  text-align: center;
+  border: 1px dashed rgb(var(--c-line));
+  border-radius: 20px;
+}
+.recommend-empty p {
+  font-weight: 600;
+}
+.recommend-empty span {
+  display: block;
+  color: rgb(var(--c-muted));
+  font-size: 13px;
+  margin: 10px 0 20px;
+}
+:where(button, a):focus-visible {
+  outline: 2px solid rgb(var(--c-accent));
+  outline-offset: 4px;
+}
+.feature-film button:focus-visible {
+  outline-color: white;
+}
+@keyframes film-reveal {
+  from {
+    opacity: 0.3;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (max-width: 1100px) {
+  .site-header-inner {
+    gap: 18px;
+  }
+  .primary-navigation {
+    gap: 0;
+  }
+  .discovery-stage {
+    grid-template-columns: minmax(0, 1.8fr) minmax(260px, 1fr);
+    gap: 22px;
+  }
+  .poster-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 24px 18px;
+  }
+  .feature-copy {
+    max-width: 90%;
+  }
+  .watch-cover {
+    width: 95px;
+  }
+}
+@media (max-width: 760px) {
+  .site-header-inner {
+    min-height: 72px;
+    flex-wrap: wrap;
+    gap: 0 12px;
+    padding: 14px 18px;
+  }
+  .site-wordmark {
+    font-size: 18px;
+    gap: 7px;
+  }
+  .site-wordmark small {
+    font-size: 8px;
+    letter-spacing: 1px;
+  }
+  .primary-navigation {
+    margin-left: auto;
+    height: 42px;
+  }
+  .primary-navigation a {
+    padding: 0 10px;
+    font-size: 12px;
+    letter-spacing: 0;
+  }
+  .header-tools {
+    margin-left: auto;
+  }
+  .header-tools button {
+    padding: 7px;
+  }
+  .header-search {
+    order: 4;
+    width: 100%;
+    margin-top: 12px;
+  }
+  .discovery-main {
+    padding: 22px 18px 45px;
+  }
+  .discovery-stage {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .feature-film {
+    min-height: 340px;
+    border-radius: 24px;
+  }
+  .feature-topline {
+    padding: 24px;
+    font-size: 8px;
+    letter-spacing: 1px;
+  }
+  .feature-copy {
+    padding: 42px 24px 52px;
+  }
+  .feature-copy h1 {
+    color: #fff;
+    font-size: 34px;
+  }
+  .watch-sidebar .section-heading {
+    margin-bottom: 16px;
+  }
+  .watch-row {
+    margin-bottom: 14px;
+  }
+  .watch-cover {
+    width: 110px;
+    height: 74px;
+  }
+  .watch-empty {
+    min-height: 180px;
+  }
+  .poster-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px 14px;
+  }
+  .discovery-filters {
+    gap: 7px;
+    padding-bottom: 20px;
+  }
+  .discovery-chip {
+    padding: 9px 14px;
+    font-size: 12px;
+  }
+  .poster-image {
+    border-radius: 13px;
+  }
+  .section-heading h2 {
+    font-size: 20px;
+  }
+  .collection-count {
+    font-size: 10px;
+  }
+}
+@media (max-width: 480px) {
+  .primary-navigation {
+    order: 3;
+    width: 100%;
+    height: 38px;
+    margin-top: 10px;
+  }
+  .primary-navigation a {
+    flex: 1;
+    justify-content: center;
+  }
+  .site-header-inner > .flex-1 {
+    display: none;
+  }
+  .feature-copy {
+    max-width: 100%;
+  }
+  .feature-topline span:last-child {
+    display: none;
+  }
+  .poster-title {
+    font-size: 12px;
+  }
+  .poster-rating {
+    font-size: 11px;
+  }
+}
+@media (max-width: 350px) {
+  .poster-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .feature-art,
+  .feature-copy {
+    animation: none;
+  }
+  .poster-card,
+  .poster-image img,
+  .feature-action,
+  .watch-row,
+  .discovery-chip,
+  .feature-pagination button::after {
+    transition: none;
+  }
+}
+
+/* Explicit Astryx parts keep autocomplete semantics on the native input. */
+.cinema-search-control {
+  min-height: 40px;
+  border-radius: 999px;
+  padding-right: 38px;
+  background: transparent;
+}
+.feature-action {
+  height: auto;
+}
+.discovery-chip {
+  height: auto;
+}
+.discovery-chip[aria-pressed="true"] {
+  background: rgb(var(--c-accent));
+  color: rgb(var(--c-on-accent));
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+  /* 统一焦点环：键盘用户可见，与 .input 同一规格 */
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40;
+}
+
+@utility btn-primary {
+  @apply btn bg-accent text-on-accent hover:bg-accent-hover;
+}
+
+@utility btn-ghost {
+  @apply btn bg-chip text-muted hover:bg-hover hover:text-content border border-line;
+}
+
+@utility btn-sm {
+  @apply btn px-2.5 py-1 text-xs;
+}
+
+@utility input {
+  @apply bg-chip border border-line rounded-md px-3 py-2 text-sm text-content placeholder:text-faint;
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:border-accent;
+}
+
+@utility card {
+  @apply bg-card border border-line rounded-lg overflow-hidden transition-all duration-200;
+}
+
+@utility tag {
+  @apply inline-flex items-center text-xs px-1.5 py-0.5 rounded-full;
+}
+
+@utility chip {
+  @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] transition-colors;
+}
+
+.discovery-chip[aria-pressed="false"] {
+  background: rgb(var(--c-chip));
+  color: rgb(var(--c-muted));
+}
