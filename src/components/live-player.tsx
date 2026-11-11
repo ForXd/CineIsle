@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type MpegtsType from 'mpegts.js';
 import Artplayer from 'artplayer';
+import { hlsLoadPolicy } from '@/lib/hls-policy';
 import Hls, { type HlsConfig } from 'hls.js';
 import { Spinner } from './states';
 import { prefersTouchPointer } from '@/lib/touch-pointer';
@@ -162,6 +163,8 @@ export function LivePlayer({ url, title, onPrevChannel, onNextChannel }: LivePla
       let liveNetRetryCount = 0;
       let mediaRecoverCount = 0;
       const hlsConfig: Partial<HlsConfig> = {
+        manifestLoadPolicy: hlsLoadPolicy(2, 1000),
+        fragLoadPolicy: hlsLoadPolicy(4, 800, 120_000),
         debug: false,
         enableWorker: true,
         liveSyncDurationCount: 3,
@@ -169,10 +172,6 @@ export function LivePlayer({ url, title, onPrevChannel, onNextChannel }: LivePla
         backBufferLength: 30,
         maxBufferLength: 20,
         maxMaxBufferLength: 40,
-        manifestLoadingMaxRetry: 2,
-        manifestLoadingRetryDelay: 1000,
-        fragLoadingMaxRetry: 4,
-        fragLoadingRetryDelay: 800,
       };
       const hls = new Hls(hlsConfig);
       hlsRef.current = hls;

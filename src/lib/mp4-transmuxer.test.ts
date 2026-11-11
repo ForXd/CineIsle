@@ -1,71 +1,91 @@
-import { describe, expect, it } from 'vitest';
-import { patchInitSegmentDuration } from './mp4-transmuxer';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  BufferSource,
+  BufferTarget,
+  EncodedAudioPacketSource,
+  EncodedPacket,
+  EncodedPacketSink,
+  Input,
+  MP4,
+  MpegTsOutputFormat,
+  Output,
+} from 'mediabunny';
+import { StreamingTransmuxer } from './mp4-transmuxer';
 
-const u32 = (v: number) =>
-  new Uint8Array([(v >>> 24) & 0xff, (v >>> 16) & 0xff, (v >>> 8) & 0xff, v & 0xff]);
-
-const readU32 = (b: Uint8Array, o: number) =>
-  ((b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3]) >>> 0;
-
-function box(type: string, ...payloads: Uint8Array[]): Uint8Array {
-  const payloadLen = payloads.reduce((n, p) => n + p.length, 0);
-  const out = new Uint8Array(8 + payloadLen);
-  out.set(u32(out.length), 0);
-  for (let i = 0; i < 4; i++) out[4 + i] = type.charCodeAt(i);
-  let off = 8;
-  for (const p of payloads) {
-    out.set(p, off);
-    off += p.length;
+// Generate a real MPEG-TS container with AAC packets and a nonzero broadcast timestamp.
+async function transportStream(): Promise<Uint8Array> {
+  const output = new Output({ format: new MpegTsOutputFormat(), target: new BufferTarget() });
+  const source = new EncodedAudioPacketSource('aac');
+  output.addAudioTrack(source);
+  await output.start();
+  const frame = new Uint8Array([0x21, 0x10, 0x04, 0x60, 0x8c, 0x1c]);
+  for (let i = 0; i < 48; i++) {
+    await source.add(new EncodedPacket(frame, 'key', 10 + (i * 1024) / 48000, 1024 / 48000), {
+      decoderConfig: {
+        codec: 'mp4a.40.2',
+        sampleRate: 48000,
+        numberOfChannels: 2,
+        description: new Uint8Array([0x11, 0x90]),
+      },
+    });
   }
-  return out;
+  await output.finalize();
+  if (!output.target.buffer) throw new Error('Missing generated transport stream');
+  return new Uint8Array(output.target.buffer);
 }
 
-/** version 0 full box：version(1)+flags(3)=0，其后是若干 u32 字段 */
-function fullBox(fields: number[]): Uint8Array {
-  const out = new Uint8Array(4 + fields.length * 4);
-  fields.forEach((v, i) => {
-    out.set(u32(v), 4 + i * 4);
-  });
-  return out;
-}
-
-/** 按 mux.js 的实际布局搭最小 initSegment：ftyp + moov(mvhd + trak(tkhd)) */
-function initSegment(mvhdDuration: number, tkhdDuration: number): Uint8Array {
-  const ftyp = box('ftyp', new Uint8Array([0x69, 0x73, 0x6f, 0x6d]));
-  const mvhdBox = box('mvhd', fullBox([0, 0, 90_000, mvhdDuration])); // timescale 90000
-  const tkhdBox = box('tkhd', fullBox([0, 0, 1, 0, tkhdDuration]));
-  const moov = box('moov', mvhdBox, box('trak', tkhdBox));
-  const out = new Uint8Array(ftyp.length + moov.length);
-  out.set(ftyp, 0);
-  out.set(moov, ftyp.length);
-  return out;
-}
-
-// ftyp(12) + moov 头(8) → mvhd 头(8) → mvhd payload 起点 28
-const MVHD_PAYLOAD = 12 + 8 + 8;
-// + mvhd payload(20) + trak 头(8) + tkhd 头(8) → tkhd payload 起点 64
-const TKHD_PAYLOAD = MVHD_PAYLOAD + 20 + 8 + 8;
-
-describe('patchInitSegmentDuration', () => {
-  it('把 mvhd/tkhd 的 0xFFFFFFFF 哨兵值替换为真实时长（90000 时基）', () => {
-    const patched = patchInitSegmentDuration(initSegment(0xffffffff, 0xffffffff), 2730);
-    expect(readU32(patched, MVHD_PAYLOAD + 16)).toBe(2730 * 90_000);
-    expect(readU32(patched, TKHD_PAYLOAD + 20)).toBe(2730 * 90_000);
-  });
-
-  it('0xFFFFFFFF/90000 ≈ 47721.86s ≈ 13:15:21 —— 未修补时播放器看到的时长', () => {
-    expect(0xffffffff / 90_000).toBeCloseTo(47721.86, 1);
+describe('streaming MP4 conversion', () => {
+  it('preserves AAC packets and real duration across arbitrary chunk boundaries', async () => {
+    const chunks: Uint8Array[] = [];
+    const close = vi.fn(async () => {});
+    const converter = new StreamingTransmuxer({
+      write: async (data) => {
+        chunks.push(data.slice());
+      },
+      close,
+    });
+    const ts = await transportStream();
+    for (let offset = 0; offset < ts.length; offset += 1024) {
+      await converter.pushAndTransmux(ts.subarray(offset, offset + 1024));
+    }
+    await converter.finish();
+    expect(close).toHaveBeenCalledOnce();
+    const bytes = new Uint8Array(await new Blob(chunks as BlobPart[]).arrayBuffer());
+    const result = new Input({ source: new BufferSource(bytes), formats: [MP4] });
+    try {
+      expect(await result.computeDuration()).toBeCloseTo(1.024, 2);
+      const audio = await result.getPrimaryAudioTrack();
+      expect(audio?.codec).toBe('aac');
+      if (!audio) throw new Error('Missing audio track');
+      let count = 0;
+      for await (const packet of new EncodedPacketSink(audio).packets()) {
+        expect(packet.data).toEqual(new Uint8Array([0x21, 0x10, 0x04, 0x60, 0x8c, 0x1c]));
+        count++;
+      }
+      expect(count).toBe(48);
+    } finally {
+      result.dispose();
+    }
   });
 
-  it('时长非正数 / 非有限值时原样返回', () => {
-    const init = initSegment(0xffffffff, 0xffffffff);
-    expect(patchInitSegmentDuration(init, 0)).toEqual(init);
-    expect(patchInitSegmentDuration(init, Number.NaN)).toEqual(init);
+  it('rejects invalid input instead of successfully saving an empty file', async () => {
+    const close = vi.fn(async () => {});
+    const converter = new StreamingTransmuxer({ write: async () => {}, close });
+    await expect(
+      (async () => {
+        await converter.pushAndTransmux(new Uint8Array([1, 2, 3]));
+        await converter.finish();
+      })()
+    ).rejects.toBeDefined();
+    expect(close).not.toHaveBeenCalled();
   });
 
-  it('不修改入参缓冲', () => {
-    const init = initSegment(0xffffffff, 0xffffffff);
-    patchInitSegmentDuration(init, 60);
-    expect(readU32(init, MVHD_PAYLOAD + 16)).toBe(0xffffffff);
+  it('aborts an unfinished stream without publishing a partial download', async () => {
+    const close = vi.fn(async () => {});
+    const abort = vi.fn(async () => {});
+    const converter = new StreamingTransmuxer({ write: async () => {}, close, abort });
+    await converter.abort();
+    expect(abort).toHaveBeenCalledOnce();
+    expect(close).not.toHaveBeenCalled();
   });
 });

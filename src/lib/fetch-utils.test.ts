@@ -59,3 +59,43 @@ describe('fetchUpstream 安全跳转', () => {
     await expect(fetchUpstream(PUBLIC_URL)).rejects.toThrow(/重定向次数过多/);
   });
 });
+
+describe('request lifetime', () => {
+  it('releases redirect response bodies before following the next URL', async () => {
+    const cancel = vi.fn();
+    const first = new Response(new ReadableStream({ cancel }), {
+      status: 302,
+      headers: { location: 'https://93.184.216.34/b' },
+    });
+    mockFetch([() => first, () => new Response('ok')]);
+    await fetchUpstream(PUBLIC_URL);
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+  it('creates a fresh timeout signal for each retry', async () => {
+    const signals: AbortSignal[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init: RequestInit) => {
+        if (!init.signal) throw new Error('Missing abort signal');
+        signals.push(init.signal);
+        if (signals.length === 1) throw new Error('Transient network failure');
+        return new Response('ok');
+      })
+    );
+    await fetchUpstream(PUBLIC_URL, { safeRedirects: false, retries: 1 });
+    expect(signals).toHaveLength(2);
+    expect(signals[0]).not.toBe(signals[1]);
+  });
+  it('does not start another request after caller cancellation', async () => {
+    const controller = new AbortController();
+    const fetcher = vi.fn(async () => {
+      controller.abort();
+      throw new Error('Disconnected');
+    });
+    vi.stubGlobal('fetch', fetcher);
+    await expect(
+      fetchUpstream(PUBLIC_URL, { safeRedirects: false, signal: controller.signal, retries: 3 })
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+});

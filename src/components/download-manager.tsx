@@ -6,14 +6,14 @@ import { Icon } from './icon';
 import { useToast } from './toast';
 import { db, type DownloadTaskEntry } from '@/lib/db';
 import {
-  PauseResumeController,
   clearDownloadChunks,
   runDownloadJob,
   supportsChunkCache,
   type DownloadProgress,
 } from '@/lib/m3u8-downloader';
 import { loadDownloadSettings, saveDownloadSettings } from '@/lib/download-settings';
-import { detectSavingCapability, pickSaveTarget } from '@/lib/download-saver';
+import { detectSavingCapability, pickSaveTarget, UserCancelledError } from '@/lib/download-saver';
+import { DownloadRuntime } from '@/lib/download-runtime';
 import { Switch } from './settings-shared';
 
 /**
@@ -37,14 +37,6 @@ export interface AddDownloadPayload {
   format?: 'TS' | 'MP4';
 }
 
-/** 运行中的任务句柄（不进持久化） */
-interface RunningHandle {
-  abort: AbortController;
-  pause: PauseResumeController;
-  /** 恢复后需要用户重选保存位置时置 false */
-  hasTarget: boolean;
-}
-
 export function DownloadManager({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { toast } = useToast();
   const [tasks, setTasks] = useState<DownloadTaskEntry[]>([]);
@@ -52,11 +44,22 @@ export function DownloadManager({ isOpen, onClose }: { isOpen: boolean; onClose:
   const [chunkCache, setChunkCache] = useState(true);
   const [proxy, setProxy] = useState(false);
   const scheduleNextRef = useRef<() => void>(() => {});
-  const running = useRef(new Map<string, RunningHandle>());
+  const [runtime] = useState(() => new DownloadRuntime(MAX_CONCURRENT_DOWNLOADS));
+  useEffect(
+    () => () => {
+      void runtime.dispose();
+    },
+    [runtime]
+  );
 
   const refresh = useCallback(() => {
-    void db.downloads.orderBy('createdAt').reverse().toArray().then(setTasks);
-  }, []);
+    void db.downloads
+      .orderBy('createdAt')
+      .reverse()
+      .toArray()
+      .then(setTasks)
+      .catch(() => toast('无法读取下载记录', 'error'));
+  }, [toast]);
 
   const updateEntry = useCallback(
     async (id: string, patch: Partial<DownloadTaskEntry>) => {
@@ -74,20 +77,32 @@ export function DownloadManager({ isOpen, onClose }: { isOpen: boolean; onClose:
 
   // —— 任务启动：选目标 → runDownloadJob ——
   const startTask = useCallback(
-    async (entry: DownloadTaskEntry, hasTarget: boolean) => {
-      if (running.current.has(entry.id)) return;
-      const abort = new AbortController();
-      const pause = new PauseResumeController();
-      running.current.set(entry.id, { abort, pause, hasTarget });
-      await updateEntry(entry.id, { status: 'downloading' });
+    async (entry: DownloadTaskEntry) => {
+      const handle = runtime.start(entry.id);
+      if (!handle) return;
+      const { abort, pause, target } = handle;
+      try {
+        await updateEntry(entry.id, { status: 'downloading' });
+      } catch (err) {
+        await runtime.cancel(entry.id);
+        runtime.finish(entry.id, handle);
+        toast(err instanceof Error ? err.message : '无法保存任务状态', 'error');
+        return;
+      }
 
       // 进度：UI 走本地 state 实时刷新，落库按固定间隔节流。整集动辄上千分片，
       // 逐片 updateEntry（写库 + 全量查询 + setState）会让页面越下越卡，
       // 极端情况下长任务被浏览器判定为无响应
       let lastPersistAt = 0;
       const onProgress = (p: DownloadProgress) => {
-        const status =
-          p.status === 'done' ? 'completed' : p.status === 'error' ? 'error' : 'downloading';
+        if (abort.signal.aborted) return;
+        const status = pause.getPaused()
+          ? 'paused'
+          : p.status === 'done'
+            ? 'completed'
+            : p.status === 'error'
+              ? 'error'
+              : 'downloading';
         setTasks((prev) =>
           prev.map((t) =>
             t.id === entry.id ? { ...t, finished: p.current, total: p.total, status } : t
@@ -98,12 +113,16 @@ export function DownloadManager({ isOpen, onClose }: { isOpen: boolean; onClose:
         if (p.status === 'downloading' && now - lastPersistAt < PROGRESS_PERSIST_INTERVAL_MS)
           return;
         lastPersistAt = now;
-        void db.downloads.update(entry.id, {
-          finished: p.current,
-          total: p.total,
-          status,
-          updatedAt: now,
-        });
+        void db.downloads
+          .update(entry.id, {
+            finished: p.current,
+            total: p.total,
+            status,
+            updatedAt: now,
+          })
+          .catch(() => {
+            /* Progress persistence is best effort; terminal state writes are awaited. */
+          });
       };
 
       const job = runDownloadJob({
@@ -117,66 +136,55 @@ export function DownloadManager({ isOpen, onClose }: { isOpen: boolean; onClose:
         // 已在跑的任务保持原有链路，不会下到一半换源
         proxy,
         onProgress,
-        // hasTarget=false（刷新恢复/排队恢复）时目标已在手势内由「继续」按钮选好
-        target:
-          (
-            globalThis as unknown as {
-              __dlSaveTarget?: { id: string; target: import('@/lib/download-saver').SaveTarget };
-            }
-          ).__dlSaveTarget?.id === entry.id
-            ? (
-                globalThis as unknown as {
-                  __dlSaveTarget: { target: import('@/lib/download-saver').SaveTarget };
-                }
-              ).__dlSaveTarget.target
-            : {
-                // 目标已失效（页面刷新后句柄消亡）：显式报错引导用户点「继续」重选，
-                // 绝不能静默空写——否则任务会显示完成却产出空文件
-                kind: 'memory',
-                write: async () => {
-                  throw new Error('保存位置已失效，请点击「继续」重新选择');
-                },
-                close: async () => {},
-                abort: async () => {},
-              },
+        target,
       });
 
       void job
         .then(async () => {
+          if (abort.signal.aborted) return;
           await updateEntry(entry.id, { status: 'completed' });
           void clearDownloadChunks(entry.id);
           toast(`《${entry.title}》下载完成`, 'success');
         })
         .catch(async (err: Error) => {
+          await target.abort().catch(() => {});
           if (abort.signal.aborted) return; // 用户取消：状态已在取消处理里写好
           await updateEntry(entry.id, { status: 'error' });
           toast(`《${entry.title}》下载失败：${err.message}`, 'error');
         })
         .finally(() => {
-          running.current.delete(entry.id);
+          runtime.finish(entry.id, handle);
           scheduleNextRef.current();
-        });
+        })
+        .catch(() => toast('无法保存下载结果，请重试', 'error'));
     },
-    [toast, updateEntry, proxy]
+    [toast, updateEntry, proxy, runtime]
   );
 
   // —— 全局并发调度 ——
   const scheduleNext = useCallback(() => {
     void (async () => {
-      const runningCount = running.current.size;
-      if (runningCount >= MAX_CONCURRENT_DOWNLOADS) return;
+      if (runtime.size >= MAX_CONCURRENT_DOWNLOADS) return;
       const all = await db.downloads.orderBy('createdAt').toArray();
-      const waiting = all.filter((t) => t.status === 'waiting' && !running.current.has(t.id));
-      for (const t of waiting.slice(0, MAX_CONCURRENT_DOWNLOADS - runningCount)) {
-        const entry = t;
-        // 队列恢复的任务没有保存目标：以内存目标启动（分片已在本地，写出快）
-        void startTask(
-          { ...entry, format: entry.format },
-          (globalThis as { __dlSaveTarget?: { id: string } }).__dlSaveTarget?.id === entry.id
-        );
+      for (const entry of all) {
+        if (runtime.get(entry.id)) continue;
+        if (entry.status === 'downloading') {
+          await updateEntry(entry.id, { status: 'paused' });
+          continue;
+        }
+        if (entry.status !== 'waiting') continue;
+        if (!runtime.hasTarget(entry.id)) {
+          // File handles cannot survive page reloads; ask for a new destination before starting.
+          await updateEntry(entry.id, { status: 'paused' });
+          continue;
+        }
+        if (runtime.size >= MAX_CONCURRENT_DOWNLOADS) break;
+        void startTask(entry);
       }
-    })();
-  }, [startTask]);
+    })().catch((err: unknown) =>
+      toast(err instanceof Error ? err.message : '下载队列读取失败', 'error')
+    );
+  }, [toast, startTask, runtime, updateEntry]);
   scheduleNextRef.current = scheduleNext;
 
   // —— 事件：新增任务（用户手势内触发，可安全弹文件选择器） ——
@@ -186,12 +194,6 @@ export function DownloadManager({ isOpen, onClose }: { isOpen: boolean; onClose:
     const onAdd = (e: Event) => {
       const detail = (e as CustomEvent<AddDownloadPayload>).detail;
       if (!detail?.url || !detail?.title) return;
-      // 无 Cache Storage（HTTP 访问 / 老浏览器）时下载必然失败——分片无处暂存。
-      // 在入队这一步就讲清楚，别让用户等到任务跑到一半才看到报错
-      if (!supportsChunkCache()) {
-        toast('当前环境不支持下载缓存（需通过 HTTPS 访问），无法下载', 'error');
-        return;
-      }
       void (async () => {
         const format = detail.format ?? 'MP4';
         const id = `dl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -210,32 +212,30 @@ export function DownloadManager({ isOpen, onClose }: { isOpen: boolean; onClose:
         // 用户手势内预选保存目标（FS Access 弹窗必须在手势内）
         try {
           const target = await pickSaveTarget(`${detail.title}.${format.toLowerCase()}`);
-          (
-            globalThis as unknown as {
-              __dlSaveTarget?: { id: string; target: import('@/lib/download-saver').SaveTarget };
-            }
-          ).__dlSaveTarget = {
-            id,
-            target,
-          };
+          await runtime.prepare(id, target);
         } catch (err) {
-          if (err instanceof Error && err.message.includes('取消')) {
-            toast('已取消下载', 'info');
-            return;
-          }
+          toast(err instanceof UserCancelledError ? '已取消下载' : '无法选择保存位置', 'info');
+          return;
         }
-        await db.downloads.put(entry);
+        try {
+          await db.downloads.put(entry);
+        } catch (err) {
+          await runtime.cancel(id);
+          throw err;
+        }
         refresh();
         scheduleNext();
         toast(`《${detail.title}》已加入下载队列`, 'success');
-      })();
+      })().catch((err: unknown) =>
+        toast(err instanceof Error ? err.message : '下载任务创建失败', 'error')
+      );
     };
 
     window.addEventListener(ADD_TASK_EVENT, onAdd);
     return () => {
       window.removeEventListener(ADD_TASK_EVENT, onAdd);
     };
-  }, [refresh, scheduleNext, toast]);
+  }, [refresh, scheduleNext, toast, runtime]);
 
   // 抽屉打开时：刷新保存能力与任务列表，并启动排队中的任务
   useEffect(() => {
@@ -255,48 +255,43 @@ export function DownloadManager({ isOpen, onClose }: { isOpen: boolean; onClose:
   };
 
   const onPauseResume = async (entry: DownloadTaskEntry) => {
-    const handle = running.current.get(entry.id);
+    const handle = runtime.get(entry.id);
     if (handle && entry.status === 'downloading') {
       handle.pause.pause();
       await updateEntry(entry.id, { status: 'paused' });
       return;
     }
-    if (entry.status === 'paused' || entry.status === 'waiting' || entry.status === 'error') {
-      // 恢复：需要用户手势内重选保存目标（浏览器限制）
+    if (handle && entry.status === 'paused') {
+      handle.pause.resume();
+      await updateEntry(entry.id, { status: 'downloading' });
+      return;
+    }
+    if (handle) return;
+    if (
+      entry.status === 'paused' ||
+      entry.status === 'waiting' ||
+      entry.status === 'error' ||
+      entry.status === 'downloading'
+    ) {
       try {
         const target = await pickSaveTarget(`${entry.title}.${entry.format.toLowerCase()}`);
-        (
-          globalThis as unknown as {
-            __dlSaveTarget?: { id: string; target: import('@/lib/download-saver').SaveTarget };
-          }
-        ).__dlSaveTarget = {
-          id: entry.id,
-          target,
-        };
-        if (running.current.has(entry.id)) return;
+        await runtime.prepare(entry.id, target);
         await updateEntry(entry.id, { status: 'waiting' });
         scheduleNext();
       } catch (err) {
-        if (err instanceof Error && err.message.includes('取消')) toast('已取消', 'info');
+        await runtime.cancel(entry.id);
+        toast(err instanceof UserCancelledError ? '已取消' : '恢复下载失败，请重试', 'info');
       }
-      return;
     }
-    void handle; // downloading 且无 handle：状态漂移，等待调度器自愈
   };
 
   const onCancel = async (entry: DownloadTaskEntry) => {
-    running.current.get(entry.id)?.abort.abort();
-    running.current.delete(entry.id);
+    await runtime.cancel(entry.id);
     await clearDownloadChunks(entry.id);
     await db.downloads.delete(entry.id);
     refresh();
-    // 终态（已完成/失败）删的是记录而非终止任务；文件已保存在用户选择的位置，不受影响
-    toast(
-      entry.status === 'completed' || entry.status === 'error'
-        ? `《${entry.title}》已删除下载记录`
-        : `《${entry.title}》已取消下载`,
-      'info'
-    );
+    scheduleNext();
+    toast(`《${entry.title}》已移除下载任务`, 'info');
   };
 
   const statusLabel: Record<DownloadTaskEntry['status'], string> = {
@@ -324,8 +319,7 @@ export function DownloadManager({ isOpen, onClose }: { isOpen: boolean; onClose:
           保存能力：
           {capability === 'fs-access' ? '磁盘直写（边下边存）' : '内存聚合（完成后浏览器下载）'}
           {chunkCache ? ' · 支持断点续传' : ' · 当前环境无断点缓存（需 HTTPS 访问）'} · 同时进行{' '}
-          {Math.min(running.current.size, MAX_CONCURRENT_DOWNLOADS)}/{MAX_CONCURRENT_DOWNLOADS}{' '}
-          个任务
+          {Math.min(runtime.size, MAX_CONCURRENT_DOWNLOADS)}/{MAX_CONCURRENT_DOWNLOADS} 个任务
         </p>
         {tasks.length === 0 && (
           <div className="py-10 text-center text-sm text-faint">
@@ -349,7 +343,9 @@ export function DownloadManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                   <button
                     type="button"
                     className="px-2 py-1 rounded bg-chip hover:bg-hover text-xs text-content transition-colors"
-                    onClick={() => void onPauseResume(t)}
+                    onClick={() =>
+                      void onPauseResume(t).catch(() => toast('无法更新下载状态，请重试', 'error'))
+                    }
                   >
                     暂停
                   </button>
@@ -358,7 +354,9 @@ export function DownloadManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                   <button
                     type="button"
                     className="px-2 py-1 rounded bg-chip hover:bg-hover text-xs text-content transition-colors"
-                    onClick={() => void onPauseResume(t)}
+                    onClick={() =>
+                      void onPauseResume(t).catch(() => toast('无法更新下载状态，请重试', 'error'))
+                    }
                   >
                     继续
                   </button>
@@ -367,7 +365,9 @@ export function DownloadManager({ isOpen, onClose }: { isOpen: boolean; onClose:
                   type="button"
                   aria-label="删除下载任务"
                   className="p-1.5 rounded bg-chip hover:bg-hover text-content transition-colors"
-                  onClick={() => void onCancel(t)}
+                  onClick={() =>
+                    void onCancel(t).catch(() => toast('无法移除下载任务，请重试', 'error'))
+                  }
                 >
                   <Icon name="close" className="w-4 h-4" />
                 </button>

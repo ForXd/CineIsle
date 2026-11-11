@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Artplayer from 'artplayer';
+import { hlsLoadPolicy } from '@/lib/hls-policy';
 import Hls, { type HlsConfig } from 'hls.js';
 
 import { PlaybackRecovery, describeHlsError } from '@/lib/playback-recovery';
@@ -234,6 +235,8 @@ export function PlayerShell({
     const cacheSettings = loadCacheSettings();
     const cacheEnabled = cacheSettings.enabled && !!p.episodeKey;
     return {
+      manifestLoadPolicy: hlsLoadPolicy(3, 1000),
+      fragLoadPolicy: hlsLoadPolicy(6, 1000, 120_000),
       debug: false,
       enableWorker: true,
       backBufferLength: 90,
@@ -241,15 +244,12 @@ export function PlayerShell({
       maxMaxBufferLength: cacheEnabled ? 600 : 60,
       maxBufferSize: (cacheEnabled ? 90 : 30) * 1000 * 1000,
       maxBufferHole: 0.5,
-      fragLoadingMaxRetry: 6,
-      fragLoadingRetryDelay: 1000,
-      manifestLoadingMaxRetry: 3,
-      manifestLoadingRetryDelay: 1000,
+
       startLevel: -1,
       abrEwmaDefaultEstimate: 500_000,
       appendErrorMaxRetry: 5,
       // 组合 loader：广告过滤（blockAd 随设置）+ 片段缓存命中（cacheEnabled）
-      loader: createHlsLoader(Hls, { blockAd: p.adFilter }) as unknown as HlsConfig['loader'],
+      loader: createHlsLoader(Hls, { blockAd: p.adFilter }),
     };
   }, []);
 
@@ -400,7 +400,7 @@ export function PlayerShell({
 
       let restoreInFlight = false;
       const restoreAndStart = async () => {
-        if (restoredRef.current || restoreInFlight) return;
+        if (hlsRef.current !== hls || restoredRef.current || restoreInFlight) return;
 
         // MANIFEST_PARSED 早于 loadedmetadata 的 HLS 源很常见；没有有效时长时
         // 先不消费 restoredRef，等 loadedmetadata/durationchange 后再重试。
@@ -410,6 +410,7 @@ export function PlayerShell({
         restoreInFlight = true;
         try {
           const saved = (await propsRef.current.getRestorePosition?.()) ?? 0;
+          if (hlsRef.current !== hls) return;
           const currentDuration = artRef.current?.duration || video.duration || duration;
           let prefetchAnchor = video.currentTime;
           if (saved > 10 && Number.isFinite(currentDuration) && saved < currentDuration - 2) {

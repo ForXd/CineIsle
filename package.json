@@ -1,6 +1,6 @@
 {
   "name": "libretv",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "ForXd 独立维护的影视发现与播放项目，代码基础来源于 LibreTV",
   "license": "AGPL-3.0-or-later",
@@ -15,7 +15,8 @@
     "astryx": "node node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs",
     "lint:fix": "biome lint --write src",
     "format": "biome format --write src",
-    "format:check": "biome format src"
+    "format:check": "biome format src",
+    "audit": "pnpm audit --audit-level low"
   },
   "dependencies": {
     "@astryxdesign/core": "0.7.13",
@@ -27,8 +28,8 @@
     "dexie": "^4.4.7",
     "dexie-react-hooks": "^4.4.0",
     "hls.js": "^1.7.4",
+    "mediabunny": "^1.65.2",
     "mpegts.js": "^1.8.2",
-    "mux.js": "^6.3.0",
     "next": "16.4.6",
     "react": "19.3.1",
     "react-dom": "19.3.1",
@@ -38,7 +39,7 @@
     "@astryxdesign/cli": "0.7.13",
     "@biomejs/biome": "2.6.6",
     "@tailwindcss/postcss": "4.3.5",
-    "@types/node": "^26.6.6",
+    "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "postcss": "^8.5.32",

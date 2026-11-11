@@ -289,3 +289,30 @@ describe('runDownloadJob · 源站缺片与存储错误', () => {
     ).rejects.toThrow(/混合内容被拦截/);
   });
 });
+
+describe('download cancellation', () => {
+  it('aborts playlist parsing immediately without retrying a cancelled request', async () => {
+    const controller = new AbortController();
+    const fetcher = vi.fn(async (_url: string, init: RequestInit) => {
+      if (!init.signal) throw new Error('Missing signal');
+      controller.abort();
+      init.signal.throwIfAborted();
+      return new Response(PLAYLIST);
+    });
+    vi.stubGlobal('fetch', fetcher);
+    await expect(runDownloadJob(jobOptions({ signal: controller.signal }))).rejects.toMatchObject({
+      name: 'AbortError',
+    });
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+  it('stops waiting when a paused task is cancelled', async () => {
+    const pause = new PauseResumeController();
+    const controller = new AbortController();
+    pause.pause();
+    const wait = pause.waitIfPaused(controller.signal);
+    controller.abort();
+    await expect(wait).rejects.toMatchObject({ name: 'AbortError' });
+    pause.resume();
+    await pause.waitIfPaused();
+  });
+});

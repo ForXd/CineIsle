@@ -21,7 +21,7 @@ const store = new Map<string, Entry>();
 export function getLiveCache<T>(key: string): T | undefined {
   const entry = store.get(key);
   if (!entry) return undefined;
-  if (Date.now() > entry.expiresAt) {
+  if (Date.now() >= entry.expiresAt) {
     store.delete(key);
     return undefined;
   }
@@ -32,9 +32,13 @@ export function setLiveCache(key: string, value: unknown, ttlMs: number, sizeHin
   const now = Date.now();
   const bytes = Math.max(sizeHint ?? 0, 64 * 1024);
 
+  // Replacement must not count the old entry twice or evict unrelated entries.
+  store.delete(key);
+  if (!Number.isFinite(bytes) || bytes > MAX_TOTAL_BYTES || ttlMs <= 0) return;
+
   // 先清理已过期条目
   for (const [k, v] of store) {
-    if (now > v.expiresAt) store.delete(k);
+    if (now >= v.expiresAt) store.delete(k);
   }
 
   // 容量上限：逐出最旧写入的条目（Map 迭代序即插入序）

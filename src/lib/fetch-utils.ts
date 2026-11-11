@@ -55,13 +55,9 @@ export async function fetchWithSafeRedirects(
   let current = url;
   // headerTimeout 超时即 abort 内部 controller；外部 signal（调用方死线/客户端断开）链入同一 controller
   const controller = new AbortController();
-  if (init.signal) {
-    if (init.signal.aborted) controller.abort(init.signal.reason);
-    else
-      init.signal.addEventListener('abort', () => controller.abort(init.signal?.reason), {
-        once: true,
-      });
-  }
+  const signal = init.signal
+    ? AbortSignal.any([init.signal, controller.signal])
+    : controller.signal;
   for (let hop = 0; hop <= MAX_REDIRECT_HOPS; hop++) {
     const verdict = allowPrivate
       ? await checkLiveUrlAllowed(current)
@@ -72,13 +68,14 @@ export async function fetchWithSafeRedirects(
     const timer = headerTimeoutMs ? setTimeout(() => controller.abort(), headerTimeoutMs) : null;
     let res: Response;
     try {
-      res = await fetch(current, { ...init, signal: controller.signal, redirect: 'manual' });
+      res = await fetch(current, { ...init, signal, redirect: 'manual' });
     } finally {
       if (timer) clearTimeout(timer);
     }
     if (!REDIRECT_STATUSES.has(res.status)) return { res, finalUrl: current };
     const location = res.headers.get('location');
     if (!location) return { res, finalUrl: current };
+    await res.body?.cancel();
     current = new URL(location, current).href;
   }
   throw new Error('重定向次数过多');
@@ -101,10 +98,11 @@ export async function fetchUpstreamWithMeta(
     ...init
   } = options;
   // 外部 signal（调用方的总死线中断）与单次超时合并：任一触发即中断请求
-  const timeoutSignal = AbortSignal.timeout(timeoutMs);
-  const signal = init.signal ? AbortSignal.any([init.signal, timeoutSignal]) : timeoutSignal;
   let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
+    init.signal?.throwIfAborted();
+    const timeoutSignal = AbortSignal.timeout(timeoutMs);
+    const signal = init.signal ? AbortSignal.any([init.signal, timeoutSignal]) : timeoutSignal;
     try {
       if (!safeRedirects) {
         const res = await fetch(url, {

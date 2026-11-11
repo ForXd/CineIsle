@@ -37,7 +37,8 @@ function memoryTarget(filename: string, confirmOverBytes = 500 * 1024 * 1024): S
   const flush = () => {
     if (done) return;
     done = true;
-    const blob = new Blob(chunks.map((c) => c.buffer as ArrayBuffer));
+    const blob = new Blob(chunks.map((c) => c.slice().buffer));
+    chunks.length = 0;
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -61,7 +62,7 @@ function memoryTarget(filename: string, confirmOverBytes = 500 * 1024 * 1024): S
           throw new Error('用户取消了下载（内存超限）');
         }
       }
-      chunks.push(data);
+      chunks.push(data.slice());
     },
     async close() {
       flush();
