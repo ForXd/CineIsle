@@ -45,7 +45,7 @@ export function DiscoveryShowcase({
         )}
         <div className="feature-shade" />
         <div className="feature-topline">
-          <span>LIBRETV 精选</span>
+          <span>CINEISLE 精选</span>
           <span>为好故事留一点时间</span>
         </div>
         <div className="feature-copy" key={current?.id ?? 'empty'}>

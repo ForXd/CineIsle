@@ -11,6 +11,6 @@ export function getEnvImageMode(): ImageModeValue | undefined {
   const raw = process.env.DEFAULT_IMAGE_MODE?.trim().toLowerCase();
   if (!raw) return undefined;
   if (raw === 'direct' || raw === 'proxy') return raw;
-  console.warn('[LibreTV] DEFAULT_IMAGE_MODE 取值无效，已忽略（可选 direct / proxy）：', raw);
+  console.warn('[CineIsle] DEFAULT_IMAGE_MODE 取值无效，已忽略（可选 direct / proxy）：', raw);
   return undefined;
 }

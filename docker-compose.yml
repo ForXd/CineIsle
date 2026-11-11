@@ -1,9 +1,9 @@
 services:
-  libretv:
+  cineisle:
     build: .
     # 独立项目只构建本地镜像，不拉取上游发布产物。
-    image: ${LIBRETV_IMAGE:-forxd-libretv:local}
-    container_name: libretv
+    image: ${CINEISLE_IMAGE:-cineisle:local}
+    container_name: cineisle
     restart: unless-stopped
     ports:
       - "8080:8080"

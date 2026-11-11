@@ -9,12 +9,12 @@ export function SiteFooter() {
     <footer className="border-t border-line py-4">
       <p className="text-center text-xs text-faint">
         <a
-          href="https://github.com/ForXd/LibreTV"
+          href="https://github.com/ForXd/CineIsle"
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-accent"
         >
-          LibreTV · ForXd{version ? ` v${version}` : ''}
+          映屿 CineIsle{version ? ` v${version}` : ''}
         </a>
         {' · 代码来源于 '}
         <a

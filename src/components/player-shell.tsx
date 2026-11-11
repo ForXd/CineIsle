@@ -1112,7 +1112,7 @@ export function PlayerShell({
         <div
           className="absolute inset-0 bg-black pointer-events-none"
           style={{
-            backgroundImage: 'url(/player-poster.png)',
+            backgroundImage: 'url(/player-poster.svg)',
             backgroundSize: 'contain',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',

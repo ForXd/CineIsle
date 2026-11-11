@@ -33,7 +33,7 @@ jobs:
           cp -R .next/static .next/standalone/.next/static
           find .next/standalone -maxdepth 1 -name '.env*' -delete
           mkdir -p dist
-          tar -czf "dist/libretv-forxd-$VERSION-linux-x64.tar.gz" -C .next/standalone .
+          tar -czf "dist/cineisle-$VERSION-linux-x64.tar.gz" -C .next/standalone .
           (cd dist && sha256sum *.tar.gz > SHA256SUMS)
       - uses: actions/upload-artifact@v7.0.2
         with:
@@ -45,5 +45,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          printf '%s\n' 'ForXd independently maintained release.' '' 'Code originally based on LibreSpark/LibreTV (https://github.com/LibreSpark/LibreTV), licensed under AGPL-3.0-or-later.' '' 'Runtime: Node.js 24 on Linux x64. Extract and run PASSWORD=your-password PORT=8080 node server.js.' > "$RUNNER_TEMP/release-notes.md"
-          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "LibreTV · ForXd $GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md"
+          printf '%s\n' 'CineIsle, independently maintained by ForXd.' '' 'Code originally based on LibreSpark/LibreTV (https://github.com/LibreSpark/LibreTV), licensed under AGPL-3.0-or-later.' '' 'Runtime: Node.js 24 on Linux x64. Extract and run PASSWORD=your-password PORT=8080 node server.js.' > "$RUNNER_TEMP/release-notes.md"
+          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "CineIsle $GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md"

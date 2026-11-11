@@ -33,7 +33,7 @@ export function getEnvSources(): SourceConfig[] {
     return list;
   } catch (err) {
     console.warn(
-      '[LibreTV] DEFAULT_SOURCES 解析失败，已忽略：',
+      '[CineIsle] DEFAULT_SOURCES 解析失败，已忽略：',
       err instanceof Error ? err.message : err
     );
     return [];

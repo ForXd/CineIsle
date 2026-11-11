@@ -1010,7 +1010,7 @@ function SourceSubscriptions() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `LibreTV-SourceList_${Date.now()}.json`;
+    a.download = `CineIsle-SourceList_${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     toast(
@@ -1297,7 +1297,7 @@ function ConfigIoPanel() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `LibreTV-Settings_${Date.now()}.json`;
+      a.download = `CineIsle-Settings_${Date.now()}.json`;
       a.click();
       URL.revokeObjectURL(url);
       toast('配置已导出', 'success');

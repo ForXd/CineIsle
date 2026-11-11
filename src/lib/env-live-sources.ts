@@ -32,7 +32,7 @@ export function getEnvLiveSources(): LiveSourceConfig[] {
     return list;
   } catch (err) {
     console.warn(
-      '[LibreTV] DEFAULT_LIVE_SOURCES 解析失败，已忽略：',
+      '[CineIsle] DEFAULT_LIVE_SOURCES 解析失败，已忽略：',
       err instanceof Error ? err.message : err
     );
     return [];

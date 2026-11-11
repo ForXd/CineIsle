@@ -1,8 +1,8 @@
 {
-  "name": "libretv",
-  "version": "1.0.1",
+  "name": "cineisle",
+  "version": "1.1.0",
   "private": true,
-  "description": "ForXd 独立维护的影视发现与播放项目，代码基础来源于 LibreTV",
+  "description": "映屿 CineIsle：独立维护的影视发现与播放项目，代码基础来源于 LibreTV",
   "license": "AGPL-3.0-or-later",
   "scripts": {
     "dev": "next dev -p 8080",
@@ -54,6 +54,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ForXd/LibreTV.git"
+    "url": "https://github.com/ForXd/CineIsle.git"
   }
 }
