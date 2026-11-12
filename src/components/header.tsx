@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { Button } from '@astryxdesign/core/Button';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { useState } from 'react';
@@ -43,16 +42,9 @@ export function Header({ showSearch = false }: { showSearch?: boolean }) {
       <header className="sticky top-0 z-40 bg-surface/90 backdrop-blur border-b border-line">
         <div className="site-header-inner">
           <Link href="/" aria-label="映屿 CineIsle 首页" className="site-wordmark">
-            <Image
-              width={28}
-              height={28}
-              src="/icons/cineisle-512.png"
-              alt="映屿 CineIsle"
-              className="w-7 h-7 rounded-lg"
-            />
             <span>
-              映屿<span className="wordmark-tv"> CineIsle</span>
-              <small>让好故事发生</small>
+              CINEISLE
+              <small>映屿 · 让好故事发生</small>
             </span>
           </Link>
 

@@ -7,7 +7,8 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/client-api';
 import { useAppStore } from '@/lib/store';
 import type { DoubanItem } from '@/lib/types';
-import { DoubanCard } from './video-card';
+import { FilmShelf } from './film-shelf';
+import { FilmSlate } from '@phosphor-icons/react';
 import { DiscoveryShowcase } from './discovery-showcase';
 
 const MOVIE_TAGS = [
@@ -87,10 +88,16 @@ function DoubanView({ onPick }: { onPick: (title: string) => void }) {
       </div>
 
       <div className="discovery-filters">
+        <span className="filter-label">
+          发现
+          <br />
+          好故事
+        </span>
         {tags.map((t) => (
           <ToggleButton
             key={t}
             label={t}
+            icon={<FilmSlate size={18} />}
             className="discovery-chip"
             isPressed={t === tag}
             onPressedChange={() => setTag(t)}
@@ -98,14 +105,6 @@ function DoubanView({ onPick }: { onPick: (title: string) => void }) {
         ))}
       </div>
 
-      <div className="section-heading collection-heading">
-        <div>
-          <h2>发现好故事</h2>
-        </div>
-        <span className="collection-count">
-          {items.length > 0 ? `${items.length} 部精选作品` : '电影 · 剧集 · 生活的另一面'}
-        </span>
-      </div>
       {query.isError ? (
         <div className="recommend-empty">
           <p>暂时无法加载推荐内容</p>
@@ -117,11 +116,7 @@ function DoubanView({ onPick }: { onPick: (title: string) => void }) {
       ) : items.length === 0 ? (
         <p className="text-center text-sm text-faint py-8">该分类暂无推荐内容</p>
       ) : (
-        <div className="poster-grid">
-          {items.map((item) => (
-            <DoubanCard key={item.id} item={item} onClick={() => onPick(item.title)} />
-          ))}
-        </div>
+        <FilmShelf title="热门推荐" items={items} onPick={onPick} />
       )}
     </section>
   );
@@ -148,6 +143,11 @@ function BangumiView({ onPick }: { onPick: (title: string) => void }) {
     <section aria-label="新番放送推荐" className="discovery-section">
       <DiscoveryShowcase items={items} onPick={onPick} />
       <div className="discovery-filters">
+        <span className="filter-label">
+          发现
+          <br />
+          好故事
+        </span>
         <ChipButton active={weekday === 'all'} onClick={() => setWeekday('all')}>
           全部
         </ChipButton>
@@ -158,14 +158,6 @@ function BangumiView({ onPick }: { onPick: (title: string) => void }) {
         ))}
       </div>
 
-      <div className="section-heading collection-heading">
-        <div>
-          <h2>发现好故事</h2>
-        </div>
-        <span className="collection-count">
-          {items.length > 0 ? `${items.length} 部精选作品` : '电影 · 剧集 · 生活的另一面'}
-        </span>
-      </div>
       {query.isError ? (
         <div className="recommend-empty">
           <p>暂时无法加载推荐内容</p>
@@ -175,11 +167,7 @@ function BangumiView({ onPick }: { onPick: (title: string) => void }) {
       ) : query.isLoading ? (
         <GridSkeleton />
       ) : (
-        <div className="poster-grid">
-          {items.map((item) => (
-            <DoubanCard key={item.id} item={item} onClick={() => onPick(item.title)} />
-          ))}
-        </div>
+        <FilmShelf title="热门推荐" items={items} onPick={onPick} />
       )}
     </section>
   );
@@ -203,12 +191,21 @@ function HotListView({ onPick }: { onPick: (title: string) => void }) {
     queryFn: ({ signal }) => api.hotList(listId, signal),
   });
 
+  const secondary = useQuery({
+    queryKey: ['hot-list', 'douban_tv_global'],
+    queryFn: ({ signal }) => api.hotList('douban_tv_global', signal),
+  });
   const items = query.data?.items ?? [];
 
   return (
     <section aria-label="影视榜单推荐" className="discovery-section">
       <DiscoveryShowcase items={items} onPick={onPick} />
       <div className="discovery-filters">
+        <span className="filter-label">
+          发现
+          <br />
+          好故事
+        </span>
         {HOT_LISTS.map((l) => (
           <ChipButton key={l.id} active={listId === l.id} onClick={() => setListId(l.id)}>
             {l.label}
@@ -216,14 +213,6 @@ function HotListView({ onPick }: { onPick: (title: string) => void }) {
         ))}
       </div>
 
-      <div className="section-heading collection-heading">
-        <div>
-          <h2>发现好故事</h2>
-        </div>
-        <span className="collection-count">
-          {items.length > 0 ? `${items.length} 部精选作品` : '电影 · 剧集 · 生活的另一面'}
-        </span>
-      </div>
       {query.isError ? (
         <div className="recommend-empty">
           <p>暂时无法加载推荐内容</p>
@@ -233,11 +222,16 @@ function HotListView({ onPick }: { onPick: (title: string) => void }) {
       ) : query.isLoading ? (
         <GridSkeleton />
       ) : (
-        <div className="poster-grid">
-          {items.map((item) => (
-            <DoubanCard key={item.id} item={item} onClick={() => onPick(item.title)} />
-          ))}
-        </div>
+        <>
+          <FilmShelf
+            title={HOT_LISTS.find((list) => list.id === listId)?.label ?? '热门推荐'}
+            items={items}
+            onPick={onPick}
+          />
+          {listId !== 'douban_tv_global' && (
+            <FilmShelf title="海外剧集" items={secondary.data?.items ?? []} onPick={onPick} />
+          )}
+        </>
       )}
     </section>
   );
@@ -268,6 +262,7 @@ function ChipButton({
   return (
     <ToggleButton
       label={children}
+      icon={<FilmSlate size={18} />}
       className="discovery-chip"
       isPressed={active}
       onPressedChange={onClick}

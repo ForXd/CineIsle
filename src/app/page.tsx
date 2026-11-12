@@ -171,7 +171,7 @@ function HomeContent() {
   useEffect(() => setVisibleCount(RESULT_PAGE_SIZE), [groups]);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="cinema-shell min-h-screen flex flex-col">
       <Header showSearch={!urlQuery} />
 
       <main className="relative flex-1 w-full mx-auto discovery-main">

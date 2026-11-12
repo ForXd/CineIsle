@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Play, Star } from '@phosphor-icons/react';
 import { Button } from '@astryxdesign/core/Button';
 import Link from 'next/link';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -44,10 +45,6 @@ export function DiscoveryShowcase({
           />
         )}
         <div className="feature-shade" />
-        <div className="feature-topline">
-          <span>CINEISLE 精选</span>
-          <span>为好故事留一点时间</span>
-        </div>
         <div className="feature-copy" key={current?.id ?? 'empty'}>
           <p className="feature-eyebrow">{current ? '今日精选' : '你的私人放映时光'}</p>
           <h1>{current?.title || '下一段好故事，\n从这里开始。'}</h1>
@@ -55,22 +52,18 @@ export function DiscoveryShowcase({
             {current?.rating ? `${ratingSource} ${current.rating} 分 · ` : ''}
             {current ? '发现值得一看的作品' : '搜索喜欢的电影与剧集，找到属于你的片刻。'}
           </p>
-          <Button
-            label={current ? '查找片源' : '探索影片'}
-            className="feature-action"
-            icon={<Icon name="search" className="w-4 h-4" />}
-            endContent={
-              <span className="feature-arrow" aria-hidden>
-                ↗
-              </span>
-            }
-            onClick={() =>
-              current
-                ? onPick(current.title)
-                : document.querySelector<HTMLInputElement>('input[aria-label="搜索影片"]')?.focus()
-            }
-          />
         </div>
+        <Button
+          label={current ? `查找《${current.title}》片源` : '探索影片'}
+          className="feature-action"
+          isIconOnly
+          icon={<Play size={42} weight="regular" />}
+          onClick={() =>
+            current
+              ? onPick(current.title)
+              : document.querySelector<HTMLInputElement>('input[aria-label="搜索影片"]')?.focus()
+          }
+        />
         {featured.length > 1 && (
           <fieldset className="feature-pagination" aria-label="切换精选影片">
             {featured.map((item, i) => (
@@ -113,7 +106,7 @@ export function DiscoveryShowcase({
                   <div className="watch-cover">
                     <SmartImage url={item.pic} mode={mode} customProxy={customProxy} alt="" />
                     <span className="mini-play" aria-hidden>
-                      ▷
+                      <Play size={23} />
                     </span>
                     <span className="watch-progress" style={{ width: `${progress}%` }} />
                   </div>
@@ -135,13 +128,16 @@ export function DiscoveryShowcase({
                 <div className="watch-cover">
                   <SmartImage url={item.cover} mode={mode} customProxy={customProxy} alt="" />
                   <span className="mini-play" aria-hidden>
-                    ↗
+                    <Play size={23} />
                   </span>
                 </div>
                 <div className="watch-copy">
                   <h3>{item.title}</h3>
                   <span className="watch-tag">精选 {String(i + 1).padStart(2, '0')}</span>
-                  <p>{item.rating ? `☆ ${item.rating} ${ratingSource}评分` : '发现更多好故事'}</p>
+                  <p className="watch-rating">
+                    <Star size={13} />
+                    {item.rating ? `${item.rating} ${ratingSource}` : '精选推荐'}
+                  </p>
                 </div>
               </button>
             ))}

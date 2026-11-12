@@ -1,6 +1,6 @@
 # 映屿 · CineIsle
 
-映屿（CineIsle）是独立维护的影视发现、聚合搜索与播放项目。界面采用 Astryx 设计系统，支持桌面与移动端、明暗主题、影片推荐、观看历史和直播。
+映屿（CineIsle）是独立维护的影视发现、聚合搜索与播放项目。界面采用 Astryx 设计系统，默认暖黑影院主题，提供大幅精选、七列横向海报片单和移动端触控浏览；支持明暗主题、影片推荐、观看历史和直播。
 
 本仓库不是 GitHub Fork，使用独立的提交历史、版本和发布流程，不自动同步上游。
 
@@ -28,6 +28,28 @@ pnpm start
 访问 [http://localhost:8080](http://localhost:8080)，使用配置的密码登录。无需 Docker。开发时运行 `pnpm dev`。
 
 安装后在页面右上角“设置”中添加自己的点播源或直播订阅；项目不预置视频源，也不存储视频文件。
+
+## Nginx 局域网部署
+
+生产应用监听 `127.0.0.1:8081`，Nginx 在 `8080` 端口对外提供访问：
+
+```bash
+pnpm build
+pnpm exec next start --hostname 127.0.0.1 -p 8081
+```
+
+将 `deploy/nginx/cineisle.conf` 加入 Nginx 的 HTTP 配置，并移除默认站点对 `8080` 的占用。执行 `nginx -t` 验证后启动或重载 Nginx。同一局域网设备访问 `http://<服务器局域网 IP>:8080`，使用原有登录密码。
+
+当前 macOS 部署由 `local.cineisle` LaunchAgent 管理应用，Homebrew 服务管理 Nginx，两者均在登录后自动启动。Homebrew 配置位置为 `/opt/homebrew/etc/nginx/servers/cineisle.conf`。应用启动参数使用内部端口 `8081`，不要同时运行占用 `8080` 的 `pnpm start` 或 `pnpm dev`。
+
+```bash
+# 修改 Nginx 配置后
+nginx -t && nginx -s reload
+# 重启 Nginx
+brew services restart nginx
+# 重新构建并重启应用
+pnpm build && launchctl kickstart -k gui/$(id -u)/local.cineisle
+```
 
 ## 功能
 

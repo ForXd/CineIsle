@@ -9,15 +9,15 @@ import { useTheme } from './theme';
 
 /** Astryx owns control styling; the cinema layout keeps its existing geometry. */
 const cinemaTheme = defineTheme({
-  name: 'libretv',
+  name: 'cineisle',
   extends: neutralTheme,
   tokens: {
-    '--color-accent': ['#265b48', '#00b8e6'],
-    '--color-accent-muted': ['#265b481a', '#00b8e61a'],
-    '--color-background-body': ['#f6f8f7', '#0b101a'],
-    '--color-background-surface': ['#ffffff', '#141c29'],
-    '--color-text-primary': ['#19231f', '#e6f2ff'],
-    '--color-text-secondary': ['#596861', '#8599b2'],
+    '--color-accent': ['#265b48', '#e8dac0'],
+    '--color-accent-muted': ['#265b481a', '#e8dac01a'],
+    '--color-background-body': ['#f6f8f7', '#0d0c0a'],
+    '--color-background-surface': ['#ffffff', '#171512'],
+    '--color-text-primary': ['#19231f', '#f6f4ef'],
+    '--color-text-secondary': ['#596861', '#b9b5ad'],
     '--font-family-body':
       '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
     '--font-family-heading':
