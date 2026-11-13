@@ -9,11 +9,12 @@
     "ignoreUnknown": true,
     "includes": [
       "src/**",
+      "scripts/**",
       "*.json",
       "*.ts",
       "*.mjs",
       "!next-env.d.ts",
-      "!pnpm-lock.yaml",
+      "!bun.lock",
       "!!.oil-ui",
       "!!.next"
     ]

@@ -5,18 +5,19 @@
   "description": "映屿 CineIsle：独立维护的影视发现与播放项目，代码基础来源于 LibreTV",
   "license": "AGPL-3.0-or-later",
   "scripts": {
-    "dev": "next dev -p 8080",
-    "build": "next build",
-    "start": "next start -p 8080",
-    "lint": "biome lint --error-on-warnings src",
-    "typecheck": "next typegen && tsc --noEmit",
-    "test": "vitest run",
-    "check": "pnpm lint && pnpm typecheck && pnpm test",
-    "astryx": "node node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs",
-    "lint:fix": "biome lint --write src",
-    "format": "biome format --write src",
-    "format:check": "biome format src",
-    "audit": "pnpm audit --audit-level low"
+    "dev": "bun --bun next dev -p 8080",
+    "build": "bun --bun next build",
+    "start": "bun --bun next start -p 8080",
+    "lint": "biome lint --error-on-warnings src scripts",
+    "typecheck": "bun --bun next typegen && bun --bun tsc --noEmit",
+    "test": "bun --bun vitest run",
+    "check": "bun run lint && bun run typecheck && bun run test",
+    "astryx": "bun node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs",
+    "lint:fix": "biome lint --write src scripts",
+    "format": "biome format --write src scripts",
+    "format:check": "biome format src scripts",
+    "audit": "bun audit --audit-level low",
+    "smoke": "bun scripts/smoke.mjs"
   },
   "dependencies": {
     "@astryxdesign/core": "0.7.13",
@@ -48,13 +49,15 @@
     "typescript": "7.0.2",
     "vitest": "^5.1.0"
   },
-  "packageManager": "pnpm@12.18.0",
+  "packageManager": "bun@1.4.4",
   "engines": {
-    "node": ">=24 <25",
-    "pnpm": ">=12 <13"
+    "bun": ">=1.4.4 <2"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/ForXd/CineIsle.git"
-  }
+  },
+  "trustedDependencies": [
+    "esbuild"
+  ]
 }

@@ -7,25 +7,23 @@ permissions:
   contents: write
 jobs:
   package:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: pnpm/action-setup@v6.1.1
-      - uses: actions/setup-node@v7.1.0
+      - uses: oven-sh/setup-bun@v2.2.0
         with:
-          node-version: 24
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm check
-      - run: pnpm format:check
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - run: bun run format:check
       - name: Build standalone
-        run: pnpm build
+        run: bun run build
         env:
           DOCKER_BUILD: '1'
           NEXT_TELEMETRY_DISABLED: '1'
       - name: Package
         run: |
-          VERSION=$(node -p "require('./package.json').version")
+          VERSION=$(bun -p "require('./package.json').version")
           if [[ "$GITHUB_REF_TYPE" == tag && "$GITHUB_REF_NAME" != "v$VERSION" ]]; then
             echo '::error::Tag must match package.json version'; exit 1
           fi
@@ -45,5 +43,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          printf '%s\n' 'CineIsle, independently maintained by ForXd.' '' 'Code originally based on LibreSpark/LibreTV (https://github.com/LibreSpark/LibreTV), licensed under AGPL-3.0-or-later.' '' 'Runtime: Node.js 24 on Linux x64. Extract and run PASSWORD=your-password PORT=8080 node server.js.' > "$RUNNER_TEMP/release-notes.md"
+          printf '%s\n' 'CineIsle, independently maintained by ForXd.' '' 'Code originally based on LibreSpark/LibreTV (https://github.com/LibreSpark/LibreTV), licensed under AGPL-3.0-or-later.' '' 'Runtime: Bun 1.4.4 on Linux x64. Extract and run PASSWORD=your-password PORT=8080 bun server.js.' > "$RUNNER_TEMP/release-notes.md"
           gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "CineIsle $GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md"

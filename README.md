@@ -12,20 +12,20 @@
 
 ## 本地运行
 
-环境：Node.js **24**、pnpm **12**。精确依赖版本记录在 `package.json` 和 `pnpm-lock.yaml`。
+环境：**Bun 1.4.4**（包管理器与运行时）。版本固定在 `.bun-version`，精确依赖记录在 `bun.lock`。
 
 ```bash
-corepack enable
-pnpm install --frozen-lockfile
+bun --version
+bun install --frozen-lockfile
 cp .env.example .env.local
 # 编辑 .env.local，设置 PASSWORD
-pnpm check
-pnpm format:check
-pnpm build
-pnpm start
+bun run check
+bun run format:check
+bun run build
+bun run start
 ```
 
-访问 [http://localhost:8080](http://localhost:8080)，使用配置的密码登录。无需 Docker。开发时运行 `pnpm dev`。
+访问 [http://localhost:8080](http://localhost:8080)，使用配置的密码登录。无需 Docker。开发时运行 `bun run dev`。
 
 安装后在页面右上角“设置”中添加自己的点播源或直播订阅；项目不预置视频源，也不存储视频文件。
 
@@ -34,13 +34,13 @@ pnpm start
 生产应用监听 `127.0.0.1:8081`，Nginx 在 `8080` 端口对外提供访问：
 
 ```bash
-pnpm build
-pnpm exec next start --hostname 127.0.0.1 -p 8081
+bun run build
+bun --bun next start --hostname 127.0.0.1 -p 8081
 ```
 
 将 `deploy/nginx/cineisle.conf` 加入 Nginx 的 HTTP 配置，并移除默认站点对 `8080` 的占用。执行 `nginx -t` 验证后启动或重载 Nginx。同一局域网设备访问 `http://<服务器局域网 IP>:8080`，使用原有登录密码。
 
-当前 macOS 部署由 `local.cineisle` LaunchAgent 管理应用，Homebrew 服务管理 Nginx，两者均在登录后自动启动。Homebrew 配置位置为 `/opt/homebrew/etc/nginx/servers/cineisle.conf`。应用启动参数使用内部端口 `8081`，不要同时运行占用 `8080` 的 `pnpm start` 或 `pnpm dev`。
+当前 macOS 部署由 `local.cineisle` LaunchAgent 管理应用，Homebrew 服务管理 Nginx，两者均在登录后自动启动。Homebrew 配置位置为 `/opt/homebrew/etc/nginx/servers/cineisle.conf`。应用启动参数使用内部端口 `8081`，不要同时运行占用 `8080` 的 `bun run start` 或 `bun run dev`。
 
 ```bash
 # 修改 Nginx 配置后
@@ -48,8 +48,20 @@ nginx -t && nginx -s reload
 # 重启 Nginx
 brew services restart nginx
 # 重新构建并重启应用
-pnpm build && launchctl kickstart -k gui/$(id -u)/local.cineisle
+bun run build && launchctl kickstart -k gui/$(id -u)/local.cineisle
 ```
+
+## Windows 部署
+
+目录布局：`D:\CineIsle\app` 存放代码，`runtime\bun\bin\bun.exe` 存放 Bun 1.4.4，`runtime\nginx-1.31.8` 存放 Nginx，`logs` 存放服务日志。全局 Node 不是运行依赖。
+
+1. 在 `app` 目录设置 `.env.local` 中的 `PASSWORD`。
+2. 使用上述 Bun 执行 `install --frozen-lockfile`、`run check`、`run build`。
+3. 在管理员 PowerShell 执行 `app\deploy\windows\install-services.ps1`。
+
+脚本创建 `CineIsle-App` 与 `CineIsle-Nginx` 开机计划任务，以 Local Service 账号运行，异常退出一分钟后重试。Nginx 对局域网开放 8080，应用仅监听 `127.0.0.1:8081`。任务无需交互登录；首次安装脚本遇到同名任务会拒绝覆盖。
+
+更新时先构建，再使用 `Stop-ScheduledTask` / `Start-ScheduledTask` 重启 `CineIsle-App`。Nginx 配置位于 `runtime\nginx-1.31.8\conf\nginx.conf`，修改后先 `nginx -t` 再重载。
 
 ## 功能
 
@@ -65,7 +77,7 @@ pnpm build && launchctl kickstart -k gui/$(id -u)/local.cineisle
 | 工具 | 版本 |
 | --- | --- |
 | Node.js | 24 |
-| pnpm | 12.18.0 |
+| bun run | 12.18.0 |
 | TypeScript | 7.0.2 |
 | Next.js | 16.4.6 |
 | React | 19.3.1 |
@@ -76,16 +88,17 @@ pnpm build && launchctl kickstart -k gui/$(id -u)/local.cineisle
 | Mediabunny | 1.65.2 |
 
 ```bash
-pnpm check          # 静态检查、类型检查、单元测试
-pnpm format:check   # 格式检查
-pnpm format         # 格式化
-pnpm build          # Turbopack 生产构建
-pnpm audit          # 完整依赖树安全审计
+bun run check          # 静态检查、类型检查、单元测试
+bun run format:check   # 格式检查
+bun run format         # 格式化
+bun run build          # Turbopack 生产构建
+bun run smoke          # Bun 生产运行时、认证、流式响应验证
+bun run audit          # 完整依赖树安全审计
 ```
 
 Biome 启用推荐规则，警告也会使检查失败。少量有意的生命周期触发依赖、含独立重试按钮的复合卡片，以及播放器注入样式的覆盖均附有局部豁免原因。项目不使用 ESLint、旧版 TypeScript 兼容层或 Tailwind 3 配置。
 
-`src/components/design-system.tsx` 统一 Astryx 主题和路由适配。组件用法可通过 `pnpm astryx component Button` 查询。
+`src/components/design-system.tsx` 统一 Astryx 主题和路由适配。组件用法可通过 `bun run astryx component Button` 查询。
 
 GitHub Actions 独立执行检查、测试和构建。发布使用本仓库版本与产物，不引用上游发布镜像。
 
@@ -113,6 +126,6 @@ GitHub Actions 独立执行检查、测试和构建。发布使用本仓库版�
 - MP4 转封装按需加载 Mediabunny，以背压限制内存，不重新编码；不支持的编码显式提示改用 TS。
 - 异步请求必须传播取消信号；每次网络重试使用独立超时，换集后的旧回调不得操作新播放器。
 - hls.js 使用当前 `LoadPolicy` 配置，不使用废弃的重试参数。
-- 安装和安全审计使用 npm 官方注册表；`pnpm audit` 检查整个依赖树。
+- 安装和安全审计使用 npm 官方注册表；`bun run audit` 检查整个依赖树。
 
 品牌、仓库与发布产物统一使用 CineIsle；为保留已有用户设置和观看记录，浏览器持久化键及 LibreTV 配置交换格式沿用原有标识。
