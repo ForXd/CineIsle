@@ -44,7 +44,7 @@ set NODE_ENV=production
 set NEXT_TELEMETRY_DISABLED=1
 set TEMP=D:\CineIsle\runtime\tmp
 set TMP=D:\CineIsle\runtime\tmp
-D:\CineIsle\runtime\bun\bin\bun.exe --bun node_modules\next\dist\bin\next start -p 8081 --hostname 127.0.0.1 >> D:\CineIsle\logs\app.log 2>&1
+D:\CineIsle\runtime\bun\bin\bun.exe node_modules\next\dist\bin\next start -p 8081 --hostname 127.0.0.1 >> D:\CineIsle\logs\app.log 2>&1
 exit /b %errorlevel%
 '@ | Set-Content "$root\start-app.cmd" -Encoding ascii
 @'
