@@ -92,6 +92,7 @@ export function useSearchHistory(input: string) {
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>, onPick: (text: string) => void) => {
+    if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
     if (e.key === 'Escape') {
       close();
       return;

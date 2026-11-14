@@ -74,18 +74,7 @@ bun run build && launchctl kickstart -k gui/$(id -u)/local.cineisle
 
 ## 技术栈与检查
 
-| 工具 | 版本 |
-| --- | --- |
-| Node.js | 24 |
-| bun run | 12.18.0 |
-| TypeScript | 7.0.2 |
-| Next.js | 16.4.6 |
-| React | 19.3.1 |
-| Astryx | 0.7.13 |
-| Tailwind CSS | 4.3.5 |
-| Biome | 2.6.6 |
-| Vitest | 5.1.0 |
-| Mediabunny | 1.65.2 |
+项目使用 Bun 安装依赖并运行 Next.js。前端使用 React、TypeScript、Astryx 与 Tailwind CSS，使用 Biome 检查代码、Vitest 运行测试。Bun 版本见 [.bun-version](.bun-version)，直接依赖见 [package.json](package.json)，各平台的安装版本由 [bun.lock](bun.lock) 锁定。
 
 ```bash
 bun run check          # 静态检查、类型检查、单元测试

@@ -1092,25 +1092,32 @@ function SourceSubscriptions() {
         </div>
       )}
 
-      <div className="flex gap-2 mb-2">
+      <form
+        className="flex gap-2 mb-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (subUrl.trim() && syncing.size === 0) addAndSync();
+        }}
+      >
+        <label className="sr-only" htmlFor="subscription-url">
+          订阅地址
+        </label>
         <input
+          id="subscription-url"
+          inputMode="url"
           className="input flex-1 min-w-0"
           placeholder="订阅地址（LibreTV 源列表或 TVBOX 配置的 JSON URL）"
           value={subUrl}
           onChange={(e) => setSubUrl(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') addAndSync();
-          }}
         />
         <button
-          type="button"
+          type="submit"
           className="btn-primary btn-sm shrink-0"
           disabled={!subUrl.trim() || syncing.size > 0}
-          onClick={addAndSync}
         >
           {syncing.size > 0 ? '同步中…' : '订阅'}
         </button>
-      </div>
+      </form>
       {store.subscriptions.length === 0 ? (
         <p className="text-xs text-faint">
           一份订阅可同时下发点播源与直播源，支持 LibreTV 源列表与 TVBOX
